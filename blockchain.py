@@ -1,7 +1,7 @@
 import hashlib
 import json
 from time import time
-from textwrap import dedent
+#from textwrap import dedent
 from uuid import uuid4
 
 from flask import Flask, jsonify, request
@@ -13,7 +13,7 @@ class BlockChain(object):
         self.current_transactions = []
 
         # create a genesis block
-        self.new_block(previous_hash=1, proof=100)
+        self.new_block(previous_hash=1, proof=15454124)
 
     def new_block(self, proof, previous_hash=None):
         """
@@ -32,8 +32,8 @@ class BlockChain(object):
         }
 
         self.current_transactions = []
+        self.chain.append(block)
         return block
-        pass
 
     def new_transaction(self, sender, recipient, amount):
         # add a new transaction
@@ -63,28 +63,46 @@ class BlockChain(object):
         return self.chain[-1]
 
     def proof_of_work(self, last_proof):
+        start_time =time()
         proof = 0
         while self.valid_proof(last_proof, proof) is False:
             proof += 1
-            return proof
+        end_time = time()
+        print("it took :", end_time-start_time, "seconds")
+        return proof
 
     @staticmethod
     def valid_proof(last_proof, proof):
         guess = f'{last_proof}{proof}'.encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
-        return guess_hash[:6] == "000000"
+        return guess_hash[:5] == "010200"
 
 
 app = Flask(__name__)
 
 node_identifier = str(uuid4()).replace('-', '')
 blockchain = BlockChain()
+print(blockchain.chain)
 
 
 @app.route('/mine', methods=['GET'])
 def mine():
-    last_block =
-    return "Mining a block"
+    last_block = blockchain.last_block
+    last_proof = last_block['proof']
+    proof = blockchain.proof_of_work(last_proof)
+
+    blockchain.new_transaction(sender="0", recipient=node_identifier, amount=1)
+    previous_hash = blockchain.hash(last_block)
+    block = blockchain.new_block(proof, previous_hash)
+
+    response = {
+        'message': "New Block Forged",
+        'index': block['index'],
+        'transactions': block['transactions'],
+        'proof': block['proof'],
+        'previous_hash': block['previous_hash'],
+    }
+    return jsonify(response), 200
 
 
 @app.route('/transactions/new', methods=['POST'])
